@@ -1,118 +1,112 @@
-One Button. 30 Levels. 5 Seconds Each.
-Think fast. Or lose.
+# 🎮 5 Seconds
 
-5 Seconds is a psychological reflex + logic game built using pure HTML, CSS, and JavaScript.
+> ## One Button. 30 Levels. 5 Seconds Each.  
+> ### Think fast. Or lose.
 
-Every level presents a single rule inside a circular button.
-You have only 5 seconds to decide whether to press it or not.
+**5 Seconds** is a psychological reflex + logic game built using pure **HTML, CSS, and JavaScript**.
 
-Press only if the condition is true.
+Every level presents a single rule inside a circular button.  
+You have only **5 seconds** to decide whether to press it or not.
+
+Press only if the condition is true.  
 One mistake — and it's game over.
 
-🧠 Game Concept
+---
 
-30 progressively harder levels
+## 🧠 Game Concept
 
-Each level has a unique logical, mathematical, psychological, or pattern-based condition
+- 30 progressively harder levels  
+- Each level has a unique logical, mathematical, psychological, or pattern-based condition  
+- 5-second decision timer  
+- One-button gameplay  
+- Increasing tension from Level 1 to Level 30  
 
-5-second decision timer
+The background gradually transitions from **green (safe)** to **deep red (danger)** as you progress — intensifying psychological pressure.
 
-One-button gameplay
+---
 
-Increasing tension from Level 1 to Level 30
+## 🎯 Core Mechanics
 
-The background gradually transitions from green (safe) to deep red (danger) as you progress — intensifying psychological pressure.
+✔ Press if condition is **TRUE**  
+✔ Don’t press if condition is **FALSE**  
+✔ No action within 5 seconds = **No Press**  
+✔ One wrong decision ends the run  
 
-🎯 Core Mechanics
+---
 
-✔ Press if condition is TRUE
-✔ Don’t press if condition is FALSE
-✔ No action within 5 seconds = “No Press”
-✔ One wrong decision ends the run
-
-🧩 Level Types
+## 🧩 Level Types
 
 The game mixes different categories:
 
-🧮 Math traps
+- 🧮 Math traps  
+- ⏳ Real-time clock conditions  
+- 🌍 General knowledge checks  
+- 🧠 Psychological mind games  
+- 🔁 Pattern-based logic  
+- 🎲 Randomized decision levels  
+- 💀 Advanced meta-level traps  
 
-⏳ Real-time clock conditions
+### 🏁 Final Level
 
-🌍 General knowledge checks
+> Press only if total presses equal exactly **9**.
 
-🧠 Psychological mind games
+---
 
-🔁 Pattern-based logic
+## 🎨 Visual Experience
 
-🎲 Randomized decision levels
+- Dark neon theme  
+- Circular countdown timer  
+- Smooth animations  
+- Progressive background shift (Green → Red)  
+- Minimalist futuristic UI  
 
-💀 Advanced meta-level traps
+---
 
-Final Level:
+## 🛠 Tech Stack
 
-Press only if total presses equal exactly 9.
+- Pure HTML  
+- Modern CSS (Neon UI + animations)  
+- Vanilla JavaScript  
+- No external libraries  
+- Single-file architecture  
 
-🎨 Visual Experience
+---
 
-Dark neon theme
+## 🚀 Why This Game Exists
 
-Circular countdown timer
+**5 Seconds** is designed to test:
 
-Smooth animations
+- Reaction speed  
+- Logical thinking  
+- Attention to detail  
+- Memory  
+- Emotional control under pressure  
 
-Progressive background shift (Green → Red)
-
-Minimalist futuristic UI
-
-🛠 Tech Stack
-
-Pure HTML
-
-Modern CSS (Neon UI + animations)
-
-Vanilla JavaScript
-
-No external libraries
-
-Single-file architecture
-
-🚀 Why This Game Exists
-
-5 Seconds is designed to test:
-
-Reaction speed
-
-Logical thinking
-
-Attention to detail
-
-Memory
-
-Emotional control under pressure
-
-It looks simple.
+It looks simple.  
 It isn’t.
 
-🏆 Features
+---
 
-30 handcrafted levels
+## 🏆 Features
 
-Stateful validation system
+- 30 handcrafted levels  
+- Stateful validation system  
+- Press tracking system  
+- Timer-based logic  
+- Psychological tension scaling  
 
-Press tracking system
+---
 
-Timer-based logic
+## 🎮 How to Play
 
-Psychological tension scaling
+1. Open the game  
+2. Read the rule carefully  
+3. Decide within 5 seconds  
+4. Press only if the condition is true  
+5. Survive all 30 levels  
 
-🎮 How to Play
+---
 
-Open the game
+## 👑 Creator
 
-Read the rule carefully
-
-Decide within 5 seconds
-
-Press only if the condition is true
-
-Survive all 30 levels
+Created by **M2Z Studios**
