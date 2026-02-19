@@ -46,10 +46,6 @@ The game mixes different categories:
 - 🎲 Randomized decision levels  
 - 💀 Advanced meta-level traps  
 
-### 🏁 Final Level
-
-> Press only if total presses equal exactly **9**.
-
 ---
 
 ## 🎨 Visual Experience
