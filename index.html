@@ -266,7 +266,7 @@
   <section id="home" class="screen active">
     <div class="card">
       <h1>5 Seconds</h1>
-      <p class="subtitle">One Button. 30 Levels. 5 Seconds Each.</p>
+      <p class="subtitle">One Button. 80 Levels. 5 Seconds Each.</p>
       <p class="description">Every level gives you a rule.
 Press only if it's true.
 Think carefully.
@@ -293,7 +293,7 @@ One mistake and it's over.</p>
 
   <section id="game" class="screen">
     <div class="hud">
-      <div class="hud-pill" id="levelIndicator">Level 1 / 30</div>
+      <div class="hud-pill" id="levelIndicator">Level 1 / 80</div>
       <div class="hud-pill" id="pressIndicator">Total Presses: 0</div>
     </div>
     <div class="play-wrap" id="playWrap">
@@ -329,8 +329,16 @@ One mistake and it's over.</p>
 
   <script>
     (() => {
-      const TOTAL_LEVELS = 30;
+      const TOTAL_LEVELS = 80;
       const LEVEL_DURATION = 5000;
+      const PARTS = [
+        { id: 1, name: 'Kiddo', start: 1, end: 10 },
+        { id: 2, name: 'Easy', start: 11, end: 25 },
+        { id: 3, name: 'Normal', start: 26, end: 40 },
+        { id: 4, name: 'Tricky', start: 41, end: 55 },
+        { id: 5, name: 'Insane', start: 56, end: 70 },
+        { id: 6, name: 'Hardcore', start: 71, end: 80 }
+      ];
 
       const els = {
         screens: {
@@ -346,7 +354,6 @@ One mistake and it's over.</p>
         levelIndicator: document.getElementById('levelIndicator'),
         pressIndicator: document.getElementById('pressIndicator'),
         gameBtn: document.getElementById('gameBtn'),
-        ring: document.getElementById('ring'),
         timerText: document.getElementById('timerText'),
         playWrap: document.getElementById('playWrap'),
         overLevel: document.getElementById('overLevel'),
@@ -367,71 +374,207 @@ One mistake and it's over.</p>
         levelStartTime: 0,
         pressTime: null,
         randomValueForLevel: 0,
-        levelPressCount: 0,
         running: false,
         startTimestamp: 0,
         rafId: 0,
         timeoutId: 0,
-        currentLevelObj: null
+        currentLevelObj: null,
+        levelHistory: [],
+        ruleHistory: {},
+        pressHistory: {},
+        difficultyPart: 1,
+        levelQueue: [],
+        randomIntForLevel: 0,
+        randomPairForLevel: null,
+        randomBoolForLevel: false,
       };
 
       const helpers = {
         isPrime(n) {
           if (n < 2) return false;
-          for (let i = 2; i <= Math.sqrt(n); i++) if (n % i === 0) return false;
+          for (let i = 2; i <= Math.sqrt(n); i += 1) if (n % i === 0) return false;
           return true;
-        },
-        sumTimeDigits() {
-          const now = new Date();
-          return `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`
-            .split('')
-            .reduce((acc, ch) => acc + Number(ch), 0);
         },
         fibonacci(n) {
           if (n <= 1) return n;
-          let a = 0, b = 1;
-          for (let i = 2; i <= n; i++) {
-            [a, b] = [b, a + b];
-          }
+          let a = 0;
+          let b = 1;
+          for (let i = 2; i <= n; i += 1) [a, b] = [b, a + b];
           return b;
         },
-        levelContainsDigit(level, digit) {
-          return String(level).includes(String(digit));
+        containsDigit(number, digit) {
+          return String(number).includes(String(digit));
+        },
+        sumDigits(number) {
+          return String(Math.abs(number)).split('').reduce((sum, ch) => sum + Number(ch), 0);
+        },
+        getPartByLevel(levelNumber) {
+          return PARTS.find((part) => levelNumber >= part.start && levelNumber <= part.end);
+        },
+        shuffle(arr) {
+          const out = [...arr];
+          for (let i = out.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [out[i], out[j]] = [out[j], out[i]];
+          }
+          return out;
+        },
+        lastNPressesPressed(n) {
+          if (state.levelHistory.length < n) return false;
+          const lastIds = state.levelHistory.slice(-n);
+          return lastIds.every((id) => state.pressHistory[id] === true);
+        },
+        countPressedInLastN(n) {
+          const ids = state.levelHistory.slice(-n);
+          return ids.reduce((count, id) => count + (state.pressHistory[id] ? 1 : 0), 0);
         }
       };
 
-      const levels = [
-        { text: 'Press.', validate: () => true },
-        { text: 'Press if level number is odd.', validate: (s) => s.level % 2 === 1 },
-        { text: "Don't press.", validate: () => false },
-        { text: 'Press if 249 + 38 = 287.', validate: () => 249 + 38 === 287 },
-        { text: 'Press button exactly level number times.', validate: (s) => s.levelPressCount === s.level },
-        { text: 'Press if OpenAI owns Instagram.', validate: () => false },
-        { text: 'Press if sum of current time digits is even.', validate: () => helpers.sumTimeDigits() % 2 === 0 },
-        { text: 'Press if 17 × 3 = 52.', validate: () => 17 * 3 === 52 },
-        { text: 'Press if square root of 144 is 12.', validate: () => Math.sqrt(144) === 12 },
-        { text: 'Press if 0.1 + 0.2 === 0.3.', validate: () => 0.1 + 0.2 === 0.3 },
-        { text: 'Press if current minute is prime.', validate: () => helpers.isPrime(new Date().getMinutes()) },
-        { text: 'Press if the current level number is divisible by 3.', validate: (s) => s.level % 3 === 0 },
-        { text: 'Press if Earth has 2 moons.', validate: () => false },
-        { text: 'Press if India is in Asia.', validate: () => true },
-        { text: 'Press if Instagram is owned by Meta.', validate: () => true },
-        { text: "Don’t press this.", validate: () => false },
-        { text: 'Press only if you did NOT press the previous level.', validate: (s) => !s.previousPressed },
-        { text: 'Press if this is NOT level 18.', validate: (s) => s.level !== 18 },
-        { text: 'Press every even level.', validate: (s) => s.level % 2 === 0 },
-        { text: 'Press only if previous level was pressed.', validate: (s) => s.previousPressed },
-        { text: 'Press exactly 3 seconds after this appears.', validate: (s) => s.pressTime !== null && Math.abs((s.pressTime - s.levelStartTime) - 3000) <= 350 },
-        { text: 'Press every 3rd level.', validate: (s) => s.level % 3 === 0 },
-        { text: 'Press if you blinked while reading this.', validate: (s) => s.randomValueForLevel > 0.5 },
-        { text: 'Press if level number contains digit 3.', validate: (s) => helpers.levelContainsDigit(s.level, 3) },
-        { text: 'Press if 2^5 = 32.', validate: () => 2 ** 5 === 32 },
-        { text: 'Press if Fibonacci of 6 is 8.', validate: () => helpers.fibonacci(6) === 8 },
-        { text: 'Press if you remember level 7 rule.', validate: () => helpers.sumTimeDigits() % 2 === 0 },
-        { text: 'Press if random number > 0.7.', validate: (s) => s.randomValueForLevel > 0.7 },
-        { text: 'Press if background color is blue.', validate: () => false },
-        { text: 'Press only if total presses made equals exactly 9.', validate: (s) => s.totalPresses === 9 }
-      ];
+      function makeLevel(id, text, difficultyScore, requiresMemory, validate, options = {}) {
+        return { id, text, difficultyScore, requiresMemory, validate, ...options };
+      }
+
+      function createLevelPools() {
+        return {
+          1: [
+            makeLevel('P1-L1', 'Press.', 1, false, () => true),
+            makeLevel('P1-L2', 'Do not press.', 1, false, () => false),
+            makeLevel('P1-L3', 'Press if the level number is odd.', 1, false, (s) => s.level % 2 === 1),
+            makeLevel('P1-L4', 'Press if 8 + 5 = 13.', 1, false, () => 8 + 5 === 13),
+            makeLevel('P1-L5', 'Press if 4 × 4 = 16.', 1, false, () => 4 * 4 === 16),
+            makeLevel('P1-L6', 'Press if 20 is even.', 1, false, () => 20 % 2 === 0),
+            makeLevel('P1-L7', 'Press if 12 is prime.', 2, false, () => helpers.isPrime(12)),
+            makeLevel('P1-L8', 'Press if this level number is divisible by 3.', 2, false, (s) => s.level % 3 === 0),
+            makeLevel('P1-L9', 'Press if 2^5 = 32.', 2, false, () => 2 ** 5 === 32),
+            makeLevel('P1-L10', 'Press if India is in Asia.', 2, false, () => true)
+          ],
+          2: [
+            makeLevel('P2-L1', 'Press if the level number is greater than 12.', 2, false, (s) => s.level > 12),
+            makeLevel('P2-L2', 'Press if your total presses so far are even.', 2, false, (s) => s.totalPresses % 2 === 0),
+            makeLevel('P2-L3', 'Press if you pressed the previous level.', 3, true, (s) => s.previousPressed),
+            makeLevel('P2-L4', 'Press if you did NOT press the previous level.', 3, true, (s) => !s.previousPressed),
+            makeLevel('P2-L5', 'Press if Fibonacci of 6 is 8.', 3, false, () => helpers.fibonacci(6) === 8),
+            makeLevel('P2-L6', 'Press if the level number contains digit 2.', 3, false, (s) => helpers.containsDigit(s.level, 2)),
+            makeLevel('P2-L7', 'Press if the sum of digits of this level is odd.', 3, false, (s) => helpers.sumDigits(s.level) % 2 === 1),
+            makeLevel('P2-L8', 'Press if 63 is divisible by 7.', 3, false, () => 63 % 7 === 0),
+            makeLevel('P2-L9', 'Press if this level index in the run is prime.', 4, false, (s) => helpers.isPrime(s.level)),
+            makeLevel('P2-L10', 'Press exactly around 3.0 seconds after this appears (±0.30s).', 4, false, (s) => s.pressTime !== null && Math.abs((s.pressTime - s.levelStartTime) - 3000) <= 300),
+            makeLevel('P2-L11', 'Press if random number R is greater than 0.50.', 4, false, (s) => s.randomValueForLevel > 0.5),
+            makeLevel('P2-L12', 'Press if random integer N is even.', 4, false, (s) => s.randomIntForLevel % 2 === 0),
+            makeLevel('P2-L13', 'Press if random pair A + B is greater than 10.', 4, false, (s) => (s.randomPairForLevel.a + s.randomPairForLevel.b) > 10),
+            makeLevel('P2-L14', 'Press if the rule from P1-L3 has already appeared.', 4, true, (s) => Boolean(s.ruleHistory['P1-L3']), { dependencies: ['P1-L3'] }),
+            makeLevel('P2-L15', 'Press if exactly one of the last two levels was pressed.', 4, true, (s) => helpers.countPressedInLastN(2) === 1)
+          ],
+          3: [
+            makeLevel('P3-L1', 'Press if level number modulo 4 equals 0.', 5, false, (s) => s.level % 4 === 0),
+            makeLevel('P3-L2', 'Press if total presses so far are less than current level.', 5, false, (s) => s.totalPresses < s.level),
+            makeLevel('P3-L3', 'Press if you pressed both of the last two levels.', 5, true, () => helpers.lastNPressesPressed(2)),
+            makeLevel('P3-L4', 'Press if exactly two of the last three levels were pressed.', 5, true, () => helpers.countPressedInLastN(3) === 2),
+            makeLevel('P3-L5', 'Press if random integer N is greater than 6.', 5, false, (s) => s.randomIntForLevel > 6),
+            makeLevel('P3-L6', 'Press if random pair product A×B is even.', 5, false, (s) => (s.randomPairForLevel.a * s.randomPairForLevel.b) % 2 === 0),
+            makeLevel('P3-L7', 'Press if rule P2-L10 already appeared.', 5, true, (s) => Boolean(s.ruleHistory['P2-L10']), { dependencies: ['P2-L10'] }),
+            makeLevel('P3-L8', 'Press if this level is in Part 3.', 5, false, (s) => s.difficultyPart === 3),
+            makeLevel('P3-L9', 'Press if level number has repeated digits.', 6, false, (s) => new Set(String(s.level)).size !== String(s.level).length),
+            makeLevel('P3-L10', 'Press if random boolean flag is TRUE.', 6, false, (s) => s.randomBoolForLevel),
+            makeLevel('P3-L11', 'Press if 81 ÷ 9 = 9.', 6, false, () => 81 / 9 === 9),
+            makeLevel('P3-L12', 'Press if level number is a multiple of 5.', 6, false, (s) => s.level % 5 === 0),
+            makeLevel('P3-L13', 'Press if total presses so far is divisible by 3.', 6, false, (s) => s.totalPresses % 3 === 0),
+            makeLevel('P3-L14', 'Press if previous level was NOT pressed and level number is even.', 6, true, (s) => !s.previousPressed && s.level % 2 === 0),
+            makeLevel('P3-L15', 'Press if rule P2-L14 appeared and random R > 0.2.', 6, true, (s) => Boolean(s.ruleHistory['P2-L14']) && s.randomValueForLevel > 0.2, { dependencies: ['P2-L14'] })
+          ],
+          4: [
+            makeLevel('P4-L1', 'Press if exactly one of last three levels was pressed.', 7, true, () => helpers.countPressedInLastN(3) === 1),
+            makeLevel('P4-L2', 'Press if random pair A-B is positive.', 7, false, (s) => (s.randomPairForLevel.a - s.randomPairForLevel.b) > 0),
+            makeLevel('P4-L3', 'Press if level number is NOT prime.', 7, false, (s) => !helpers.isPrime(s.level)),
+            makeLevel('P4-L4', 'Press if total presses is between 10 and 30 inclusive.', 7, false, (s) => s.totalPresses >= 10 && s.totalPresses <= 30),
+            makeLevel('P4-L5', 'Press if both: random N odd AND previous level pressed.', 7, true, (s) => (s.randomIntForLevel % 2 === 1) && s.previousPressed),
+            makeLevel('P4-L6', 'Press if rule P3-L3 appeared earlier.', 7, true, (s) => Boolean(s.ruleHistory['P3-L3']), { dependencies: ['P3-L3'] }),
+            makeLevel('P4-L7', 'Press exactly around 2.5 seconds after appear (±0.25s).', 7, false, (s) => s.pressTime !== null && Math.abs((s.pressTime - s.levelStartTime) - 2500) <= 250),
+            makeLevel('P4-L8', 'Press if level number digit sum is divisible by 3.', 8, false, (s) => helpers.sumDigits(s.level) % 3 === 0),
+            makeLevel('P4-L9', 'Press if last two levels had the same press result.', 8, true, (s) => {
+              if (s.levelHistory.length < 2) return false;
+              const [a, b] = s.levelHistory.slice(-2);
+              return s.pressHistory[a] === s.pressHistory[b];
+            }),
+            makeLevel('P4-L10', 'Press if random R is in [0.30, 0.80].', 8, false, (s) => s.randomValueForLevel >= 0.3 && s.randomValueForLevel <= 0.8),
+            makeLevel('P4-L11', 'Press if total presses is exactly 2 less than level number.', 8, false, (s) => s.totalPresses === s.level - 2),
+            makeLevel('P4-L12', 'Press if rule P3-L10 appeared and random boolean is false.', 8, true, (s) => Boolean(s.ruleHistory['P3-L10']) && !s.randomBoolForLevel, { dependencies: ['P3-L10'] }),
+            makeLevel('P4-L13', 'Press if (A+B+level) is even.', 8, false, (s) => (s.randomPairForLevel.a + s.randomPairForLevel.b + s.level) % 2 === 0),
+            makeLevel('P4-L14', 'Press if at least two of last four levels were pressed.', 8, true, () => helpers.countPressedInLastN(4) >= 2),
+            makeLevel('P4-L15', 'Press if this level belongs to Part 4 and previous was not pressed.', 8, true, (s) => s.difficultyPart === 4 && !s.previousPressed)
+          ],
+          5: [
+            makeLevel('P5-L1', 'Press if exactly three of last five levels were pressed.', 9, true, () => helpers.countPressedInLastN(5) === 3),
+            makeLevel('P5-L2', 'Press if random N + level is prime.', 9, false, (s) => helpers.isPrime(s.randomIntForLevel + s.level)),
+            makeLevel('P5-L3', 'Press if random pair product is greater than 24.', 9, false, (s) => (s.randomPairForLevel.a * s.randomPairForLevel.b) > 24),
+            makeLevel('P5-L4', 'Press if previous two levels were both NOT pressed.', 9, true, (s) => {
+              if (s.levelHistory.length < 2) return false;
+              const [a, b] = s.levelHistory.slice(-2);
+              return !s.pressHistory[a] && !s.pressHistory[b];
+            }),
+            makeLevel('P5-L5', 'Press if rule P4-L7 appeared earlier.', 9, true, (s) => Boolean(s.ruleHistory['P4-L7']), { dependencies: ['P4-L7'] }),
+            makeLevel('P5-L6', 'Press if random R < 0.15 OR random bool is true.', 9, false, (s) => s.randomValueForLevel < 0.15 || s.randomBoolForLevel),
+            makeLevel('P5-L7', 'Press if total presses so far is odd and level number is even.', 9, false, (s) => s.totalPresses % 2 === 1 && s.level % 2 === 0),
+            makeLevel('P5-L8', 'Press exactly around 3.4 seconds after appear (±0.20s).', 9, false, (s) => s.pressTime !== null && Math.abs((s.pressTime - s.levelStartTime) - 3400) <= 200),
+            makeLevel('P5-L9', 'Press if last four levels contain exactly two presses.', 9, true, () => helpers.countPressedInLastN(4) === 2),
+            makeLevel('P5-L10', 'Press if random A equals random B.', 9, false, (s) => s.randomPairForLevel.a === s.randomPairForLevel.b),
+            makeLevel('P5-L11', 'Press if this level number is a multiple of 7.', 9, false, (s) => s.level % 7 === 0),
+            makeLevel('P5-L12', 'Press if rule P4-L12 appeared and previous level was pressed.', 9, true, (s) => Boolean(s.ruleHistory['P4-L12']) && s.previousPressed, { dependencies: ['P4-L12'] }),
+            makeLevel('P5-L13', 'Press if (totalPresses + random N) is divisible by 4.', 9, false, (s) => (s.totalPresses + s.randomIntForLevel) % 4 === 0),
+            makeLevel('P5-L14', 'Press if random R is between 0.45 and 0.55.', 10, false, (s) => s.randomValueForLevel >= 0.45 && s.randomValueForLevel <= 0.55),
+            makeLevel('P5-L15', 'Press if exactly one of these is true: previous pressed, random bool true.', 10, true, (s) => Number(s.previousPressed) + Number(s.randomBoolForLevel) === 1)
+          ],
+          6: [
+            makeLevel('P6-L1', 'Press if exactly four of last six levels were pressed.', 10, true, () => helpers.countPressedInLastN(6) === 4),
+            makeLevel('P6-L2', 'Press if random pair sum + random N is divisible by 5.', 10, false, (s) => (s.randomPairForLevel.a + s.randomPairForLevel.b + s.randomIntForLevel) % 5 === 0),
+            makeLevel('P6-L3', 'Press if previous level pressed AND random R > 0.35.', 10, true, (s) => s.previousPressed && s.randomValueForLevel > 0.35),
+            makeLevel('P6-L4', 'Press if previous level not pressed AND random R < 0.65.', 10, true, (s) => !s.previousPressed && s.randomValueForLevel < 0.65),
+            makeLevel('P6-L5', 'Press exactly around 2.9 seconds after appear (±0.15s).', 10, false, (s) => s.pressTime !== null && Math.abs((s.pressTime - s.levelStartTime) - 2900) <= 150),
+            makeLevel('P6-L6', 'Press if rule P5-L8 appeared and random bool is true.', 10, true, (s) => Boolean(s.ruleHistory['P5-L8']) && s.randomBoolForLevel, { dependencies: ['P5-L8'] }),
+            makeLevel('P6-L7', 'Press if exactly two of last three levels were pressed and level is even.', 10, true, (s) => helpers.countPressedInLastN(3) === 2 && s.level % 2 === 0),
+            makeLevel('P6-L8', 'Press if total presses equals level minus random N.', 10, false, (s) => s.totalPresses === s.level - s.randomIntForLevel),
+            makeLevel('P6-L9', 'Press if random A×B is odd and previous level was not pressed.', 10, true, (s) => (s.randomPairForLevel.a * s.randomPairForLevel.b) % 2 === 1 && !s.previousPressed),
+            makeLevel('P6-L10', 'Press if this is the final level and total presses is at least 30.', 10, false, (s) => s.level === TOTAL_LEVELS && s.totalPresses >= 30)
+          ]
+        };
+      }
+
+      function buildLevelQueue() {
+        const pools = createLevelPools();
+        const queue = [];
+        const seen = new Set();
+
+        PARTS.forEach((part) => {
+          const partPool = helpers.shuffle(pools[part.id]);
+          const selected = [];
+          let safety = 0;
+
+          while (selected.length < (part.end - part.start + 1) && safety < 600) {
+            safety += 1;
+            const candidates = partPool.filter((lvl) => !selected.includes(lvl));
+            const eligible = candidates.filter((lvl) => {
+              const dependencies = lvl.dependencies || [];
+              return dependencies.every((dep) => seen.has(dep));
+            });
+
+            if (!eligible.length) {
+              break;
+            }
+
+            const next = eligible[Math.floor(Math.random() * eligible.length)];
+            selected.push(next);
+            seen.add(next.id);
+          }
+
+          if (selected.length !== (part.end - part.start + 1)) {
+            throw new Error(`Could not safely build levels for part ${part.id}`);
+          }
+
+          queue.push(...selected);
+        });
+
+        return queue;
+      }
 
       function showScreen(name) {
         Object.entries(els.screens).forEach(([key, node]) => node.classList.toggle('active', key === name));
@@ -445,18 +588,12 @@ One mistake and it's over.</p>
         document.documentElement.style.setProperty('--bg-h', hue.toFixed(2));
         document.documentElement.style.setProperty('--bg-s', `${sat.toFixed(1)}%`);
         document.documentElement.style.setProperty('--bg-l', `${light.toFixed(1)}%`);
-        document.documentElement.style.setProperty('--neon', `hsl(${Math.max(12, hue)}, 90%, 62%)`);
-
-        document.body.classList.toggle('high-tension', level >= 25);
-      }
-
-      function resetRoundFlags() {
-        state.levelPressCount = 0;
-        state.pressTime = null;
+        document.documentElement.style.setProperty('--neon', `hsl(${Math.max(8, hue)}, 90%, 62%)`);
+        document.body.classList.toggle('high-tension', level >= 60);
       }
 
       function startAudio() {
-        els.bgm.volume = state.level >= 20 ? 0.52 : 0.45;
+        els.bgm.volume = state.level >= 56 ? 0.52 : 0.45;
         els.bgm.play().catch(() => {});
       }
 
@@ -465,48 +602,61 @@ One mistake and it's over.</p>
         els.bgm.currentTime = 0;
       }
 
-      function startGame() {
-        cancelTimers();
-        state.level = 1;
-        state.totalPresses = 0;
-        state.previousPressed = false;
-        state.startTimestamp = performance.now();
-        state.running = true;
-        startAudio();
-        showScreen('game');
-        startLevel();
-      }
-
       function cancelTimers() {
         cancelAnimationFrame(state.rafId);
         clearTimeout(state.timeoutId);
       }
 
+      function assignLevelRandomness() {
+        state.randomValueForLevel = Math.random();
+        state.randomIntForLevel = Math.floor(Math.random() * 10) + 1;
+        state.randomPairForLevel = {
+          a: Math.floor(Math.random() * 6) + 1,
+          b: Math.floor(Math.random() * 6) + 1
+        };
+        state.randomBoolForLevel = Math.random() >= 0.5;
+      }
+
+      function startGame() {
+        cancelTimers();
+        state.level = 1;
+        state.totalPresses = 0;
+        state.previousPressed = false;
+        state.levelStartTime = 0;
+        state.pressTime = null;
+        state.startTimestamp = performance.now();
+        state.running = true;
+        state.levelHistory = [];
+        state.ruleHistory = {};
+        state.pressHistory = {};
+        state.difficultyPart = 1;
+        state.levelQueue = buildLevelQueue();
+        startAudio();
+        showScreen('game');
+        startLevel();
+      }
+
       function startLevel() {
         if (!state.running) return;
+        const levelObj = state.levelQueue[state.level - 1];
+        const part = helpers.getPartByLevel(state.level);
 
-        resetRoundFlags();
-        state.randomValueForLevel = Math.random();
+        state.currentLevelObj = levelObj;
+        state.difficultyPart = part.id;
+        state.pressTime = null;
         state.levelStartTime = performance.now();
-        state.currentLevelObj = levels[state.level - 1];
+        assignLevelRandomness();
 
-        els.levelIndicator.textContent = `Level ${state.level} / ${TOTAL_LEVELS}`;
-        els.pressIndicator.textContent = `Total Presses: ${state.totalPresses}`;
-        els.gameBtn.textContent = state.currentLevelObj.text;
+        els.levelIndicator.textContent = `Level ${state.level} / ${TOTAL_LEVELS} • Part ${part.id}: ${part.name}`;
+        els.pressIndicator.textContent = `Total Presses: ${state.totalPresses} • Score ${levelObj.difficultyScore}/10`;
+        els.gameBtn.textContent = levelObj.text;
+
         updateBackgroundByLevel(state.level);
-
-        if (state.level >= 28) {
-          document.documentElement.style.setProperty('--vibe', `${(Math.random() - 0.5) * 1.2}px`);
-        } else {
-          document.documentElement.style.setProperty('--vibe', '0px');
-        }
-
+        document.documentElement.style.setProperty('--vibe', state.level >= 71 ? `${(Math.random() - 0.5) * 1.6}px` : '0px');
         els.playWrap.classList.remove('urgent', 'urgent-shake');
-        renderTimer();
 
-        state.timeoutId = setTimeout(() => {
-          finalizeLevel(false);
-        }, LEVEL_DURATION);
+        renderTimer();
+        state.timeoutId = setTimeout(() => finalizeLevel(), LEVEL_DURATION);
       }
 
       function renderTimer() {
@@ -517,19 +667,22 @@ One mistake and it's over.</p>
         els.timerText.textContent = `${(left / 1000).toFixed(2)}s`;
 
         if (left <= 1000) {
-          els.playWrap.classList.add('urgent');
-          els.playWrap.classList.add('urgent-shake');
+          els.playWrap.classList.add('urgent', 'urgent-shake');
         }
 
         if (left > 0) state.rafId = requestAnimationFrame(renderTimer);
       }
 
-      function finalizeLevel(fromClick) {
+      function finalizeLevel() {
         cancelTimers();
-
-        const pressed = state.levelPressCount > 0;
-        const shouldPress = Boolean(state.currentLevelObj.validate(state));
+        const pressed = state.pressTime !== null;
+        const current = state.currentLevelObj;
+        const shouldPress = Boolean(current.validate(state));
         const success = shouldPress ? pressed : !pressed;
+
+        state.levelHistory.push(current.id);
+        state.ruleHistory[current.id] = current.text;
+        state.pressHistory[current.id] = pressed;
 
         if (!success) {
           endGameOver();
@@ -543,27 +696,16 @@ One mistake and it's over.</p>
         }
 
         state.level += 1;
-        if (state.level >= 20) els.bgm.volume = 0.52;
+        if (state.level >= 56) els.bgm.volume = 0.52;
         startLevel();
       }
 
       function registerPress() {
-        if (!state.running) return;
-        const now = performance.now();
-
-        state.levelPressCount += 1;
+        if (!state.running || state.pressTime !== null) return;
+        state.pressTime = performance.now();
         state.totalPresses += 1;
-        if (state.pressTime === null) state.pressTime = now;
-        els.pressIndicator.textContent = `Total Presses: ${state.totalPresses}`;
-
-        if (state.level === 5 && state.levelPressCount > 5) {
-          finalizeLevel(true);
-          return;
-        }
-
-        if (state.level !== 5) {
-          finalizeLevel(true);
-        }
+        els.pressIndicator.textContent = `Total Presses: ${state.totalPresses} • Score ${state.currentLevelObj.difficultyScore}/10`;
+        finalizeLevel();
       }
 
       function endGameOver() {
@@ -589,7 +731,6 @@ One mistake and it's over.</p>
         updateBackgroundByLevel(1);
       }
 
-      // Event bindings
       els.startBtn.addEventListener('click', startGame);
       els.creditsBtn.addEventListener('click', () => showScreen('credits'));
       els.backFromCredits.addEventListener('click', () => showScreen('home'));
@@ -602,5 +743,6 @@ One mistake and it's over.</p>
       updateBackgroundByLevel(1);
     })();
   </script>
+
 </body>
 </html>
