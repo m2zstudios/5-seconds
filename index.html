@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5 Seconds — Think fast. Or lose.</title>
+  <style>
+    :root {
+      --neon: #4dff9d;
+      --bg-h: 120;
+      --bg-s: 65%;
+      --bg-l: 11%;
+      --danger: #ff4d57;
+      --ring-size: 380px;
+      --card: rgba(9, 16, 14, 0.72);
+      --text: #e7fff4;
+      --muted: #a4c9ba;
+      --progress: 1;
+      --vibe: 0px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: hsl(var(--bg-h), var(--bg-s), var(--bg-l));
+      overflow: hidden;
+      transition: background 900ms ease;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(77,255,157,.14), transparent 45%),
+        radial-gradient(circle at 85% 70%, rgba(255,77,87,.11), transparent 40%),
+        radial-gradient(circle at center, transparent 60%, rgba(0,0,0,.45) 100%);
+      opacity: .9;
+      transition: opacity 650ms ease;
+      transform: translateX(var(--vibe));
+    }
+
+    body.high-tension::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at center, rgba(255,30,45,.08), transparent 70%);
+      animation: redPulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes redPulse {
+      0%,100% { opacity: .3; }
+      50% { opacity: .8; }
+    }
+
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px) scale(.99);
+      transition: opacity 420ms ease, transform 420ms ease;
+    }
+
+    .screen.active {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .card {
+      width: min(950px, 100%);
+      border: 1px solid rgba(77,255,157,.28);
+      border-radius: 24px;
+      background: var(--card);
+      backdrop-filter: blur(7px);
+      box-shadow: 0 0 40px rgba(57,250,149,.18), inset 0 0 18px rgba(57,250,149,.06);
+      padding: clamp(24px, 4vw, 46px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.6rem, 7vw, 5.2rem);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(77,255,157,.5);
+    }
+
+    .subtitle {
+      margin: 14px 0 20px;
+      font-size: clamp(1rem, 2.1vw, 1.4rem);
+      color: #d9ffee;
+      opacity: .93;
+    }
+
+    .description {
+      color: var(--muted);
+      line-height: 1.62;
+      font-size: 1.04rem;
+      max-width: 630px;
+      white-space: pre-line;
+    }
+
+    .btn {
+      border: 0;
+      color: #032c17;
+      font-weight: 800;
+      letter-spacing: .03em;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .25s ease, filter .25s ease;
+      background: linear-gradient(140deg, #7effbf, #2fff8f);
+      box-shadow: 0 0 25px rgba(77,255,157,.45);
+      padding: 14px 26px;
+      font-size: 1rem;
+    }
+
+    .btn:hover { transform: translateY(-2px) scale(1.01); filter: brightness(1.05); }
+    .btn:active { transform: translateY(0) scale(.99); }
+
+    .btn.large { font-size: 1.1rem; padding: 16px 34px; }
+    .btn.ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid rgba(189,255,225,.35);
+      box-shadow: none;
+    }
+
+    .home-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .tiny-note { margin-top: 12px; color: #b9e7d3; opacity: .8; font-size: .94rem; }
+    .footer-credit { margin-top: 38px; color: #a3d3bf; font-size: .95rem; }
+    .footer-credit span { color: var(--neon); text-shadow: 0 0 12px rgba(77,255,157,.65); font-weight: 700; }
+
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(980px, calc(100% - 30px));
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #e8fff4;
+      font-weight: 700;
+      letter-spacing: .02em;
+      text-shadow: 0 0 14px rgba(100,255,172,.35);
+      z-index: 3;
+    }
+
+    .hud-pill {
+      background: rgba(4,16,11,.55);
+      border: 1px solid rgba(100,255,172,.25);
+      border-radius: 999px;
+      padding: 10px 16px;
+      min-width: 148px;
+      text-align: center;
+    }
+
+    .play-wrap {
+      position: relative;
+      width: var(--ring-size);
+      height: var(--ring-size);
+      display: grid;
+      place-items: center;
+      margin-top: 34px;
+      transform: translateX(var(--vibe));
+      transition: transform 120ms linear;
+    }
+
+    .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(var(--neon) calc(var(--progress) * 360deg), rgba(90,145,117,.18) 0);
+      box-shadow: 0 0 28px rgba(77,255,157,.25);
+      transition: filter .3s ease;
+    }
+
+    .ring::before {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      background: rgba(4,11,9,.78);
+      border: 1px solid rgba(149,243,191,.12);
+    }
+
+    .game-btn {
+      position: relative;
+      width: 76%;
+      height: 76%;
+      border-radius: 50%;
+      border: 2px solid rgba(122,255,185,.5);
+      color: #e8fff4;
+      background: radial-gradient(circle at 30% 20%, rgba(82,255,166,.24), rgba(8,23,16,.85));
+      box-shadow: inset 0 0 26px rgba(83,255,167,.18), 0 0 20px rgba(83,255,167,.24);
+      padding: 24px;
+      text-align: center;
+      font-size: clamp(.95rem, 2vw, 1.18rem);
+      font-weight: 700;
+      line-height: 1.45;
+      cursor: pointer;
+      z-index: 2;
+      transition: transform .1s ease, box-shadow .2s ease;
+    }
+
+    .game-btn:hover { box-shadow: inset 0 0 30px rgba(83,255,167,.26), 0 0 26px rgba(83,255,167,.3); }
+    .game-btn:active { transform: scale(.98); }
+
+    .timer-text {
+      position: absolute;
+      bottom: -38px;
+      font-size: .95rem;
+      color: #c6ebda;
+      opacity: .92;
+    }
+
+    .urgent .game-btn { animation: pulse 0.5s ease-in-out infinite alternate; }
+    .urgent .ring { filter: drop-shadow(0 0 12px rgba(255,108,116,.6)); }
+    .urgent-shake { animation: quake .12s linear infinite; }
+
+    @keyframes pulse {
+      from { box-shadow: inset 0 0 20px rgba(83,255,167,.18), 0 0 16px rgba(83,255,167,.18); }
+      to { box-shadow: inset 0 0 24px rgba(255,119,124,.35), 0 0 25px rgba(255,119,124,.4); }
+    }
+    @keyframes quake {
+      0% { transform: translate(0,0); }
+      25% { transform: translate(1px,-1px); }
+      50% { transform: translate(-1px,1px); }
+      75% { transform: translate(1px,1px); }
+      100% { transform: translate(-1px,-1px); }
+    }
+
+    .center-col { text-align: center; }
+    .result-title { font-size: clamp(2rem, 6vw, 4rem); margin: 0 0 10px; text-transform: uppercase; }
+    .result-sub { color: #b8dfcf; margin: 8px 0; }
+    .result-actions { margin-top: 22px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    #credits .card { text-align: center; animation: creditsFade .4s ease both; }
+    @keyframes creditsFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 700px) {
+      :root { --ring-size: 86vw; }
+      .hud { top: 10px; font-size: .88rem; }
+      .hud-pill { min-width: 44%; padding: 8px 12px; }
+      .play-wrap { margin-top: 80px; }
+      .game-btn { font-size: .93rem; }
+    }
+  </style>
+</head>
+<body>
+  <audio id="bgm" src="scary-bgm.mp3" preload="auto" loop></audio>
+
+  <section id="home" class="screen active">
+    <div class="card">
+      <h1>5 Seconds</h1>
+      <p class="subtitle">One Button. 30 Levels. 5 Seconds Each.</p>
+      <p class="description">Every level gives you a rule.
+Press only if it's true.
+Think carefully.
+One mistake and it's over.</p>
+      <div class="home-actions">
+        <button id="startBtn" class="btn large">Start Game</button>
+        <button id="creditsBtn" class="btn ghost">Credits</button>
+      </div>
+      <p class="tiny-note">Best played with sound on.</p>
+      <p class="footer-credit">Created by <span>M2Z Studios</span></p>
+    </div>
+  </section>
+
+  <section id="credits" class="screen">
+    <div class="card center-col">
+      <h2 class="result-title">CREDITS</h2>
+      <p class="result-sub">10 Minutes of Creepy/Scary Horror Background Sounds and Music<br/>By Aidan Halm</p>
+      <p class="result-sub">Game created by M2Z Studios</p>
+      <div class="result-actions">
+        <button id="backFromCredits" class="btn">Back to Home</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="hud">
+      <div class="hud-pill" id="levelIndicator">Level 1 / 30</div>
+      <div class="hud-pill" id="pressIndicator">Total Presses: 0</div>
+    </div>
+    <div class="play-wrap" id="playWrap">
+      <div class="ring" id="ring"></div>
+      <button class="game-btn" id="gameBtn">Press.</button>
+      <div class="timer-text" id="timerText">5.00s</div>
+    </div>
+  </section>
+
+  <section id="gameOver" class="screen">
+    <div class="card center-col">
+      <h2 class="result-title">Game Over</h2>
+      <p id="overLevel" class="result-sub">You reached Level 1</p>
+      <p id="overPresses" class="result-sub">Total Presses: 0</p>
+      <div class="result-actions">
+        <button id="restartBtn" class="btn">Restart</button>
+        <button id="homeBtnFromOver" class="btn ghost">Back to Home</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="win" class="screen">
+    <div class="card center-col">
+      <h2 class="result-title">You Survived.</h2>
+      <p id="winPresses" class="result-sub">Total Presses: 0</p>
+      <p id="winTime" class="result-sub">Total Time Taken: 0.0s</p>
+      <div class="result-actions">
+        <button id="playAgainBtn" class="btn">Play Again</button>
+        <button id="homeBtnFromWin" class="btn ghost">Back to Home</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (() => {
+      const TOTAL_LEVELS = 30;
+      const LEVEL_DURATION = 5000;
+
+      const els = {
+        screens: {
+          home: document.getElementById('home'),
+          credits: document.getElementById('credits'),
+          game: document.getElementById('game'),
+          gameOver: document.getElementById('gameOver'),
+          win: document.getElementById('win')
+        },
+        startBtn: document.getElementById('startBtn'),
+        creditsBtn: document.getElementById('creditsBtn'),
+        backFromCredits: document.getElementById('backFromCredits'),
+        levelIndicator: document.getElementById('levelIndicator'),
+        pressIndicator: document.getElementById('pressIndicator'),
+        gameBtn: document.getElementById('gameBtn'),
+        ring: document.getElementById('ring'),
+        timerText: document.getElementById('timerText'),
+        playWrap: document.getElementById('playWrap'),
+        overLevel: document.getElementById('overLevel'),
+        overPresses: document.getElementById('overPresses'),
+        restartBtn: document.getElementById('restartBtn'),
+        homeBtnFromOver: document.getElementById('homeBtnFromOver'),
+        winPresses: document.getElementById('winPresses'),
+        winTime: document.getElementById('winTime'),
+        playAgainBtn: document.getElementById('playAgainBtn'),
+        homeBtnFromWin: document.getElementById('homeBtnFromWin'),
+        bgm: document.getElementById('bgm')
+      };
+
+      const state = {
+        level: 1,
+        totalPresses: 0,
+        previousPressed: false,
+        levelStartTime: 0,
+        pressTime: null,
+        randomValueForLevel: 0,
+        levelPressCount: 0,
+        running: false,
+        startTimestamp: 0,
+        rafId: 0,
+        timeoutId: 0,
+        currentLevelObj: null
+      };
+
+      const helpers = {
+        isPrime(n) {
+          if (n < 2) return false;
+          for (let i = 2; i <= Math.sqrt(n); i++) if (n % i === 0) return false;
+          return true;
+        },
+        sumTimeDigits() {
+          const now = new Date();
+          return `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`
+            .split('')
+            .reduce((acc, ch) => acc + Number(ch), 0);
+        },
+        fibonacci(n) {
+          if (n <= 1) return n;
+          let a = 0, b = 1;
+          for (let i = 2; i <= n; i++) {
+            [a, b] = [b, a + b];
+          }
+          return b;
+        },
+        levelContainsDigit(level, digit) {
+          return String(level).includes(String(digit));
+        }
+      };
+
+      const levels = [
+        { text: 'Press.', validate: () => true },
+        { text: 'Press if level number is odd.', validate: (s) => s.level % 2 === 1 },
+        { text: "Don't press.", validate: () => false },
+        { text: 'Press if 249 + 38 = 287.', validate: () => 249 + 38 === 287 },
+        { text: 'Press button exactly level number times.', validate: (s) => s.levelPressCount === s.level },
+        { text: 'Press if OpenAI owns Instagram.', validate: () => false },
+        { text: 'Press if sum of current time digits is even.', validate: () => helpers.sumTimeDigits() % 2 === 0 },
+        { text: 'Press if 17 × 3 = 52.', validate: () => 17 * 3 === 52 },
+        { text: 'Press if square root of 144 is 12.', validate: () => Math.sqrt(144) === 12 },
+        { text: 'Press if 0.1 + 0.2 === 0.3.', validate: () => 0.1 + 0.2 === 0.3 },
+        { text: 'Press if current minute is prime.', validate: () => helpers.isPrime(new Date().getMinutes()) },
+        { text: 'Press if seconds divisible by 3.', validate: () => new Date().getSeconds() % 3 === 0 },
+        { text: 'Press if Earth has 2 moons.', validate: () => false },
+        { text: 'Press if India is in Asia.', validate: () => true },
+        { text: 'Press if Instagram is owned by Meta.', validate: () => true },
+        { text: "Don’t press this.", validate: () => false },
+        { text: 'Press only if you think you shouldn’t.', validate: () => true },
+        { text: 'Press if this is NOT level 18.', validate: (s) => s.level !== 18 },
+        { text: 'Press every even level.', validate: (s) => s.level % 2 === 0 },
+        { text: 'Press only if previous level was pressed.', validate: (s) => s.previousPressed },
+        { text: 'Press exactly 3 seconds after this appears.', validate: (s) => s.pressTime !== null && Math.abs((s.pressTime - s.levelStartTime) - 3000) <= 350 },
+        { text: 'Press every 3rd level.', validate: (s) => s.level % 3 === 0 },
+        { text: 'Press if you blinked while reading this.', validate: (s) => s.randomValueForLevel > 0.5 },
+        { text: 'Press if level number contains digit 3.', validate: (s) => helpers.levelContainsDigit(s.level, 3) },
+        { text: 'Press if 2^5 = 32.', validate: () => 2 ** 5 === 32 },
+        { text: 'Press if Fibonacci of 6 is 8.', validate: () => helpers.fibonacci(6) === 8 },
+        { text: 'Press if you remember level 7 rule.', validate: () => helpers.sumTimeDigits() % 2 === 0 },
+        { text: 'Press if random number > 0.7.', validate: (s) => s.randomValueForLevel > 0.7 },
+        { text: 'Press if background color is blue.', validate: () => false },
+        { text: 'Press only if total presses made equals exactly 9.', validate: (s) => s.totalPresses === 9 }
+      ];
+
+      function showScreen(name) {
+        Object.entries(els.screens).forEach(([key, node]) => node.classList.toggle('active', key === name));
+      }
+
+      function updateBackgroundByLevel(level) {
+        const progress = (level - 1) / (TOTAL_LEVELS - 1);
+        const hue = 120 - (progress * 120);
+        const sat = 65 + (progress * 22);
+        const light = 11 + (progress * 6);
+        document.documentElement.style.setProperty('--bg-h', hue.toFixed(2));
+        document.documentElement.style.setProperty('--bg-s', `${sat.toFixed(1)}%`);
+        document.documentElement.style.setProperty('--bg-l', `${light.toFixed(1)}%`);
+        document.documentElement.style.setProperty('--neon', `hsl(${Math.max(12, hue)}, 90%, 62%)`);
+
+        document.body.classList.toggle('high-tension', level >= 25);
+      }
+
+      function resetRoundFlags() {
+        state.levelPressCount = 0;
+        state.pressTime = null;
+      }
+
+      function startAudio() {
+        els.bgm.volume = state.level >= 20 ? 0.52 : 0.45;
+        els.bgm.play().catch(() => {});
+      }
+
+      function stopAudio() {
+        els.bgm.pause();
+        els.bgm.currentTime = 0;
+      }
+
+      function startGame() {
+        cancelTimers();
+        state.level = 1;
+        state.totalPresses = 0;
+        state.previousPressed = false;
+        state.startTimestamp = performance.now();
+        state.running = true;
+        startAudio();
+        showScreen('game');
+        startLevel();
+      }
+
+      function cancelTimers() {
+        cancelAnimationFrame(state.rafId);
+        clearTimeout(state.timeoutId);
+      }
+
+      function startLevel() {
+        if (!state.running) return;
+
+        resetRoundFlags();
+        state.randomValueForLevel = Math.random();
+        state.levelStartTime = performance.now();
+        state.currentLevelObj = levels[state.level - 1];
+
+        els.levelIndicator.textContent = `Level ${state.level} / ${TOTAL_LEVELS}`;
+        els.pressIndicator.textContent = `Total Presses: ${state.totalPresses}`;
+        els.gameBtn.textContent = state.currentLevelObj.text;
+        updateBackgroundByLevel(state.level);
+
+        if (state.level >= 28) {
+          document.documentElement.style.setProperty('--vibe', `${(Math.random() - 0.5) * 1.2}px`);
+        } else {
+          document.documentElement.style.setProperty('--vibe', '0px');
+        }
+
+        els.playWrap.classList.remove('urgent', 'urgent-shake');
+        renderTimer();
+
+        state.timeoutId = setTimeout(() => {
+          finalizeLevel(false);
+        }, LEVEL_DURATION);
+      }
+
+      function renderTimer() {
+        const elapsed = performance.now() - state.levelStartTime;
+        const left = Math.max(0, LEVEL_DURATION - elapsed);
+        const ratio = left / LEVEL_DURATION;
+        document.documentElement.style.setProperty('--progress', ratio.toFixed(4));
+        els.timerText.textContent = `${(left / 1000).toFixed(2)}s`;
+
+        if (left <= 1000) {
+          els.playWrap.classList.add('urgent');
+          els.playWrap.classList.add('urgent-shake');
+        }
+
+        if (left > 0) state.rafId = requestAnimationFrame(renderTimer);
+      }
+
+      function finalizeLevel(fromClick) {
+        cancelTimers();
+
+        const pressed = state.levelPressCount > 0;
+        const shouldPress = Boolean(state.currentLevelObj.validate(state));
+        const success = shouldPress ? pressed : !pressed;
+
+        if (!success) {
+          endGameOver();
+          return;
+        }
+
+        state.previousPressed = pressed;
+        if (state.level >= TOTAL_LEVELS) {
+          endGameWin();
+          return;
+        }
+
+        state.level += 1;
+        if (state.level >= 20) els.bgm.volume = 0.52;
+        startLevel();
+      }
+
+      function registerPress() {
+        if (!state.running) return;
+        const now = performance.now();
+
+        state.levelPressCount += 1;
+        state.totalPresses += 1;
+        if (state.pressTime === null) state.pressTime = now;
+        els.pressIndicator.textContent = `Total Presses: ${state.totalPresses}`;
+
+        if (state.level === 5 && state.levelPressCount > 5) {
+          finalizeLevel(true);
+          return;
+        }
+
+        if (state.level !== 5) {
+          finalizeLevel(true);
+        }
+      }
+
+      function endGameOver() {
+        state.running = false;
+        els.overLevel.textContent = `You reached Level ${state.level}`;
+        els.overPresses.textContent = `Total Presses: ${state.totalPresses}`;
+        showScreen('gameOver');
+      }
+
+      function endGameWin() {
+        state.running = false;
+        const totalSeconds = (performance.now() - state.startTimestamp) / 1000;
+        els.winPresses.textContent = `Total Presses: ${state.totalPresses}`;
+        els.winTime.textContent = `Total Time Taken: ${totalSeconds.toFixed(1)}s`;
+        showScreen('win');
+      }
+
+      function backHome() {
+        cancelTimers();
+        state.running = false;
+        showScreen('home');
+        stopAudio();
+        updateBackgroundByLevel(1);
+      }
+
+      // Event bindings
+      els.startBtn.addEventListener('click', startGame);
+      els.creditsBtn.addEventListener('click', () => showScreen('credits'));
+      els.backFromCredits.addEventListener('click', () => showScreen('home'));
+      els.gameBtn.addEventListener('click', registerPress);
+      els.restartBtn.addEventListener('click', startGame);
+      els.playAgainBtn.addEventListener('click', startGame);
+      els.homeBtnFromOver.addEventListener('click', backHome);
+      els.homeBtnFromWin.addEventListener('click', backHome);
+
+      updateBackgroundByLevel(1);
+    })();
+  </script>
+</body>
+</html>
